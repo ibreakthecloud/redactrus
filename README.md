@@ -102,7 +102,7 @@ The defaultRedactors function returns a slice of default redaction functions: Pa
 - `APIKey(msg string, r string) string`
   - Redacts the API key from a log message.
 - `Email(msg string, r string) string`
-  -Redacts the email from a log message
+  - Redacts the email from a log message
 
 ## Custom Redaction Functions
 
