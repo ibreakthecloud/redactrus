@@ -1,6 +1,6 @@
 # Redactrus
 
-Redactrus is a custom formatter for the [logrus](https://github.com/sirupsen/logrus) logging library, designed to redact sensitive information from your logs. It allows you to define custom redaction functions that can be applied to your log messages, ensuring that sensitive data does not get exposed in your log output.
+Redactrus is a custom formatter for the [logrus](https://github.com/sirupsen/logrus) logging library, designed to redact sensitive information from your logs. It allows you to define custom redaction functions that can be applied to your log messages, ensuring that sensitive data does not get exposed in the log output.
 
 ## Features
 
