@@ -121,6 +121,7 @@ func GitHubToken(msg string, r string) string {
 
 Contributions are welcome! If you have ideas for more custom redactors, it would be awesome to have you contribute them. Feel free to open an issue or submit a pull request. Your contributions can help make Redactrus even more useful for everyone and logging more secure.
 
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
