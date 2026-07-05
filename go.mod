@@ -1,6 +1,6 @@
 module github.com/ibreakthecloud/redactrus
 
-go 1.21.4
+go 1.23.0
 
 require github.com/sirupsen/logrus v1.9.4
 
