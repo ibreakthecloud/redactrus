@@ -1,29 +1,32 @@
 package redactrus
 
 import (
-	"fmt"
 	"regexp"
 )
 
-// defaultRedactors returns a slice of default redaction functions
+// Package-level compiled regex patterns for performance.
+var (
+	passwordPattern = regexp.MustCompile(`(?i)((?:password|passwd|pwd)[=:"\s]+)\S+`)
+	apiKeyPattern   = regexp.MustCompile(`(?i)((?:api_key|apikey|api-key)[=:"\s]+)\S+`)
+	emailPattern    = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`)
+)
+
+// defaultRedactors returns a slice of default redaction functions.
 func defaultRedactors() []RedactionFunc {
 	return []RedactionFunc{Password, APIKey, Email}
 }
 
-// Password redacts the password from a log message
+// Password redacts password, passwd, and pwd fields (case-insensitive) from a log message.
 func Password(msg string, r string) string {
-	passwordPattern := regexp.MustCompile(`password=\S+`)
-	return passwordPattern.ReplaceAllString(msg, fmt.Sprintf("password=%s", r))
+	return passwordPattern.ReplaceAllString(msg, "${1}"+r)
 }
 
-// APIKey redacts the API key from a log message
+// APIKey redacts api_key, apikey, and api-key fields (case-insensitive) from a log message.
 func APIKey(msg string, r string) string {
-	apiKeyPattern := regexp.MustCompile(`api_key=\S+`)
-	return apiKeyPattern.ReplaceAllString(msg, fmt.Sprintf("api_key=%s", r))
+	return apiKeyPattern.ReplaceAllString(msg, "${1}"+r)
 }
 
-// Email redacts the email from a log message
+// Email redacts email addresses from a log message.
 func Email(msg string, r string) string {
-	emailPattern := regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`)
 	return emailPattern.ReplaceAllString(msg, r)
 }
