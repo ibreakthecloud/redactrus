@@ -42,6 +42,8 @@ func (h *RedactingHandler) WithGroup(name string) slog.Handler {
 }
 
 // Handle copies the record, redacts its attributes, and delegates to the inner handler.
+//
+//nolint:gocritic // slog.Record is passed by value in slog.Handler interface definition
 func (h *RedactingHandler) Handle(ctx context.Context, record slog.Record) error {
 	newRecord := slog.NewRecord(record.Time, record.Level, record.Message, record.PC)
 
