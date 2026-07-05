@@ -6,6 +6,16 @@
  | |_) |  _| | | | | |    | |     | | | |_) | | | \___ \ 
  |  _ <| |___| |_| | |___ | |___  | | |  _ <| |_| |___) |
  |_| \_\_____|____/ \____| \____| |_| |_| \_\\___/|____/ 
+
+            _____
+         .-"     "-.
+        /  (o)   (o) \
+       |             |     *crunch* *chomp*
+       |   .-"""-.   |    / [password=secret] -> [REDACTED]
+       |  /  | |  \  |   /  [api_key=abc123]  -> [REDACTED]
+       |  |  | |  |  |
+        \  \ V V /  /
+         `'-..__..-'`
 ```
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/ibreakthecloud/redactrus.svg)](https://pkg.go.dev/github.com/ibreakthecloud/redactrus)
