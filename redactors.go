@@ -164,12 +164,17 @@ func redactSecret(msg string, pattern *regexp.Regexp, r, redactorName string) st
 
 		var rawSecret string
 		var quotes string
-		if len(valuePart) >= 2 && strings.HasPrefix(valuePart, `"`) && strings.HasSuffix(valuePart, `"`) {
-			rawSecret = valuePart[1 : len(valuePart)-1]
-			quotes = `"`
-		} else if len(valuePart) >= 2 && strings.HasPrefix(valuePart, `'`) && strings.HasSuffix(valuePart, `'`) {
-			rawSecret = valuePart[1 : len(valuePart)-1]
-			quotes = `'`
+		if len(valuePart) >= 2 {
+			switch valuePart[0] {
+			case '"':
+				rawSecret = valuePart[1 : len(valuePart)-1]
+				quotes = `"`
+			case '\'':
+				rawSecret = valuePart[1 : len(valuePart)-1]
+				quotes = `'`
+			default:
+				rawSecret = valuePart
+			}
 		} else {
 			rawSecret = valuePart
 		}
