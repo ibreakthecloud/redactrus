@@ -1,125 +1,147 @@
 # Redactrus
 
-Redactrus is a custom formatter for the [logrus](https://github.com/sirupsen/logrus) logging library, designed to redact sensitive information from your logs. It allows you to define custom redaction functions that can be applied to your log messages, ensuring that sensitive data does not get exposed in your log output.
+```text
+  ____  _____ ____   ____   ____ _____ ____  _   _ ____  
+ |  _ \| ____|  _ \ / ___| / ___|_   _|  _ \| | | / ___| 
+ | |_) |  _| | | | | |    | |     | | | |_) | | | \___ \ 
+ |  _ <| |___| |_| | |___ | |___  | | |  _ <| |_| |___) |
+ |_| \_\_____|____/ \____| \____| |_| |_| \_\\___/|____/ 
+```
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/ibreakthecloud/redactrus.svg)](https://pkg.go.dev/github.com/ibreakthecloud/redactrus)
+[![CI Status](https://github.com/ibreakthecloud/redactrus/actions/workflows/ci.yml/badge.svg)](https://github.com/ibreakthecloud/redactrus/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/ibreakthecloud/redactrus)](https://github.com/ibreakthecloud/redactrus)
+[![License](https://img.shields.io/github/license/ibreakthecloud/redactrus)](LICENSE)
+
+Redactrus is a high-performance, production-grade security logging library for Go. It intercepts, sanitizes, and redacts sensitive data (such as passwords, API keys, JWTs, credit cards, emails, and SSNs) before it hits your logging sink. 
+
+It provides seamless adapters for **logrus**, standard library **slog**, **zerolog**, and any raw **io.Writer** streams.
+
+---
 
 ## Features
 
-- **Custom Redaction Functions**: Define your own redaction logic tailored to your application's needs.
-- **Flexible Redaction**: Add single or multiple redactors to your formatter.
-- **Easy Integration**: Seamlessly integrates with the logrus logging library.
+- **8+ Built-in Redactors**: Out-of-the-box support for `Password`, `APIKey`, `Email`, `JWT`, `BearerToken`, `AWSAccessKey`, `CreditCard`, and `SSN`.
+- **Field-level & String-level Redaction**: Scrub structured JSON fields by exact key name or key pattern, and perform deep regex redaction on message text.
+- **HMAC Hash-based Redaction**: Replace sensitive data with deterministic `[HASHED:<hex>]` signatures to correlate events across systems safely.
+- **OnRedaction Callbacks**: Monitor and audit potential leaks in real-time.
+- **Multi-framework Support**: Works out of the box with `sirupsen/logrus`, `log/slog`, `rs/zerolog`, or any custom writer via `io.Writer`.
+- **Zero Allocations & Thread-safe**: Regexes are pre-compiled and access is protected by standard synchronization.
 
-## Getting Started
+---
 
-To use Redactrus in your project, follow these steps:
-
-### Installation
-
-First, ensure you have logrus installed:
-
-```sh
-go get github.com/sirupsen/logrus
-```
-
-Then, add Redactrus to your project:
+## Installation
 
 ```sh
 go get github.com/ibreakthecloud/redactrus
 ```
 
-### Usage
+Requires Go 1.23 or newer.
 
-1. Create a Redacting Formatter:<br>
-   You can create a new RedactingFormatter by passing an existing logrus formatter that you wish to wrap. For example, to use logrus's JSONFormatter:
+---
+
+## Usage
+
+### 1. Logrus Wrapper (Field & Message Redaction)
 
 ```go
 import (
-    "github.com/sirupsen/logrus"
-    "github.com/ibreakthecloud/redactrus"
+	"github.com/ibreakthecloud/redactrus"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-    log := logrus.New()
-    formatter := redactrus.NewRedactingFormatter(&logrus.JSONFormatter{})
-    log.SetFormatter(formatter)
+	logger := logrus.New()
+	
+	// Create formatter wrapping standard logrus formatter
+	formatter := redactrus.NewDefaultRedactingFormatter(&logrus.JSONFormatter{}).
+		RedactFields("password", "api_key") // Redact structured field keys
+		
+	logger.SetFormatter(formatter)
+
+	// Will redact message string and structured entry fields
+	logger.WithField("password", "123").Info("User logging in with password=123")
 }
 ```
 
-2. Add Redaction Functions:<br>
-   Define your redaction functions and add them to the formatter:
+### 2. Standard slog Handler (Go 1.21+)
 
 ```go
-func myRedactor(originalMsg, redactWith string) string {
-    // Implement your redaction logic here
-    return originalMsg // Return the redacted message
-}
+import (
+	"log/slog"
+	"os"
+	"github.com/ibreakthecloud/redactrus"
+)
 
 func main() {
-    // Assuming log and formatter are already set up
-    formatter.AddRedactor(myRedactor)
+	formatter := redactrus.NewDefaultRedactingFormatter(&logrus.JSONFormatter{}).
+		RedactFields("secret_token")
+
+	// Wrap any slog.Handler (e.g. JSONHandler)
+	handler := redactrus.NewRedactingHandler(slog.NewJSONHandler(os.Stdout, nil), formatter)
+	logger := slog.New(handler)
+
+	// Replaces value of secret_token with "[REDACTED]"
+	logger.Info("sensitive operation", slog.String("secret_token", "supersecret"))
 }
 ```
 
-3. Log Messages:<br>
-   Use logrus as usual, and your logs will be redacted according to your defined rules.
+### 3. Zerolog & Byte-stream Writer Adapter
 
 ```go
-log.Info("This is a log message with password=password123, api_key=abcdef123456, and email=test@example.com.")
-```
+import (
+	"os"
+	"github.com/ibreakthecloud/redactrus"
+	"github.com/rs/zerolog"
+)
 
-## RedactingFormatter
+func main() {
+	formatter := redactrus.NewDefaultRedactingFormatter(&logrus.JSONFormatter{})
+	
+	// Wrap stdout to intercept and redact raw streams
+	writer := redactrus.NewZerologWriter(os.Stdout, formatter)
+	logger := zerolog.New(writer).With().Timestamp().Logger()
 
-RedactingFormatter is a struct that embeds logrus.Formatter and includes redaction functions.
-
-### Methods
-
-- `NewRedactingFormatter(innerFormatter logrus.Formatter) *RedactingFormatter`
-
-  - Creates a new `RedactingFormatter`.
-
-- `NewDefaultRedactingFormatter(innerFormatter logrus.Formatter) *RedactingFormatter`
-
-  - Creates a new `RedactingFormatter` with default redactors.
-
-- `AddRedactor(redactor RedactionFunc) *RedactingFormatter`
-
-  - Adds a new redaction function to the `RedactingFormatter`.
-
-- `AddRedactors(redactors ...RedactionFunc) *RedactingFormatter`
-
-  - Adds multiple redaction functions to the `RedactingFormatter`.
-
-- `SetRedactWith(r string) *RedactingFormatter`
-  - Sets the string to redact sensitive information with.
-
-## Default Redactors
-
-The defaultRedactors function returns a slice of default redaction functions: Password, APIKey, and Email.
-
-### Functions
-
-- `Password(msg string, r string) string`
-  - Redacts the password from a log message.
-- `APIKey(msg string, r string) string`
-  - Redacts the API key from a log message.
-- `Email(msg string, r string) string`
-  - Redacts the email from a log message
-
-## Custom Redaction Functions
-
-You can define your own redaction functions to redact sensitive information from your log messages. A redaction function takes the original log message and the string to redact sensitive information with, and returns the redacted log message.
-
-### Example
-
-```go
-func GitHubToken(msg string, r string) string {
-    tokenRegex := regexp.MustCompile(`^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$`)
-    return tokenRegex.ReplaceAllString(msg, r)
+	logger.Info().Msg("Accessing resource with api_key=sk-abc123XYZ")
 }
 ```
+
+---
+
+## Advanced Features
+
+### Deterministic Hash-based Redaction
+
+Instead of placing generic `[REDACTED]` markers in logs, you can set a global HMAC key. Secrets will be replaced with their HMAC-SHA256 signature, preserving quotes:
+
+```go
+// Set key for deterministic hashing
+redactrus.SetGlobalHashKey([]byte("my-internal-secure-key-123"))
+
+// A log containing "password=mysecret" becomes:
+// "password=[HASHED:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae]"
+```
+
+### OnRedaction Auditing Callback
+
+Get notified immediately when sensitive data is intercepted:
+
+```go
+redactrus.SetGlobalRedactionCallback(func(redactorName, value string) {
+	metrics.IncrementCounter("logs.redacted", "redactor", redactorName)
+	if isHighlyCritical(value) {
+		alerting.Notify("Security leak detected in logs!")
+	}
+})
+```
+
+---
 
 ## Contributing
 
-Contributions are welcome! If you have ideas for more custom redactors, it would be awesome to have you contribute them. Feel free to open an issue or submit a pull request. Your contributions can help make Redactrus even more useful for everyone and logging more secure.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before opening pull requests or reporting vulnerabilities.
+
+---
 
 ## License
 
