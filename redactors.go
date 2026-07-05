@@ -17,16 +17,16 @@ func defaultRedactors() []RedactionFunc {
 }
 
 // Password redacts password, passwd, and pwd fields (case-insensitive) from a log message.
-func Password(msg string, r string) string {
+func Password(msg, r string) string {
 	return passwordPattern.ReplaceAllString(msg, "${1}"+r)
 }
 
 // APIKey redacts api_key, apikey, and api-key fields (case-insensitive) from a log message.
-func APIKey(msg string, r string) string {
+func APIKey(msg, r string) string {
 	return apiKeyPattern.ReplaceAllString(msg, "${1}"+r)
 }
 
 // Email redacts email addresses from a log message.
-func Email(msg string, r string) string {
+func Email(msg, r string) string {
 	return emailPattern.ReplaceAllString(msg, r)
 }
