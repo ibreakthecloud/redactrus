@@ -142,7 +142,6 @@ func TestAPIKey_ExactMatch(t *testing.T) {
 	}
 }
 
-
 // TestEmail_TableDriven exercises Email redaction for a variety of inputs.
 func TestEmail_TableDriven(t *testing.T) {
 	cases := []struct {
