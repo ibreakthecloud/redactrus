@@ -85,6 +85,64 @@ func TestAPIKey_PreservesKeyPrefix(t *testing.T) {
 	}
 }
 
+// TestPassword_ExactMatch verifies exact output format for different quoting and formatting styles.
+func TestPassword_ExactMatch(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"unquoted", "password=secret", "password=[REDACTED]"},
+		{"unquoted space", "password = secret", "password = [REDACTED]"},
+		{"double quotes", `password="secret"`, `password="[REDACTED]"`},
+		{"single quotes", `password='secret'`, `password='[REDACTED]'`},
+		{"JSON style", `{"password":"secret","email":"user@example.com"}`, `{"password":"[REDACTED]","email":"user@example.com"}`},
+		{"JSON style spaces", `{"password" : "secret" , "email" : "user@example.com"}`, `{"password" : "[REDACTED]" , "email" : "user@example.com"}`},
+		{"comma separated", "password=secret,email=test@example.com", "password=[REDACTED],email=test@example.com"},
+		{"semicolon", "password=secret;next=val", "password=[REDACTED];next=val"},
+		{"brackets", "[password=secret]", "[password=[REDACTED]]"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := Password(tc.input, "[REDACTED]")
+			if got != tc.want {
+				t.Errorf("Password(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestAPIKey_ExactMatch verifies exact output format for different quoting and formatting styles.
+func TestAPIKey_ExactMatch(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"unquoted", "api_key=secret", "api_key=[REDACTED]"},
+		{"unquoted space", "api_key = secret", "api_key = [REDACTED]"},
+		{"double quotes", `api_key="secret"`, `api_key="[REDACTED]"`},
+		{"single quotes", `api_key='secret'`, `api_key='[REDACTED]'`},
+		{"JSON style", `{"api_key":"secret","email":"user@example.com"}`, `{"api_key":"[REDACTED]","email":"user@example.com"}`},
+		{"JSON style spaces", `{"api_key" : "secret" , "email" : "user@example.com"}`, `{"api_key" : "[REDACTED]" , "email" : "user@example.com"}`},
+		{"comma separated", "api_key=secret,email=test@example.com", "api_key=[REDACTED],email=test@example.com"},
+		{"semicolon", "api_key=secret;next=val", "api_key=[REDACTED];next=val"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := APIKey(tc.input, "[REDACTED]")
+			if got != tc.want {
+				t.Errorf("APIKey(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+
 // TestEmail_TableDriven exercises Email redaction for a variety of inputs.
 func TestEmail_TableDriven(t *testing.T) {
 	cases := []struct {
