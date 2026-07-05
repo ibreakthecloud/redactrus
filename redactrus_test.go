@@ -3,6 +3,7 @@ package redactrus
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -231,6 +232,139 @@ func TestConcurrency_Format(t *testing.T) {
 			defer wg.Done()
 			f.AddRedactor(Email)
 		}()
+	}
+
+}
+
+// TestRedactFields_ExactMatch verifies exact field-level redaction.
+func TestRedactFields_ExactMatch(t *testing.T) {
+	f := NewRedactingFormatter(&logrus.JSONFormatter{}).
+		RedactFields("password", "api_key")
+
+	// Verify they are added to config
+	keys := f.RedactFieldsList()
+	if len(keys) != 2 {
+		t.Errorf("expected 2 keys, got %d", len(keys))
+	}
+
+	entry := makeEntry("some log message")
+	entry.Data["password"] = "supersecret123"
+	entry.Data["api_key"] = "key-value-here"
+	entry.Data["public"] = "123"
+
+	out, err := f.Format(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := string(out)
+	if strings.Contains(outStr, "supersecret123") {
+		t.Error("expected password to be redacted in JSON output")
+	}
+	if strings.Contains(outStr, "key-value-here") {
+		t.Error("expected api_key to be redacted in JSON output")
+	}
+	if !strings.Contains(outStr, `"password":"[REDACTED]"`) {
+		t.Errorf("expected redacted password field, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, `"public":"123"`) {
+		t.Error("expected non-sensitive field to remain untouched")
+	}
+}
+
+// TestRedactFieldsByKeyPattern verifies field-level redaction using regex patterns.
+func TestRedactFieldsByKeyPattern(t *testing.T) {
+	f := NewRedactingFormatter(&logrus.JSONFormatter{}).
+		RedactFieldsByKeyPattern(
+			regexp.MustCompile(`(?i)secret`),
+			regexp.MustCompile(`^token_`),
+		)
+
+	// Verify they are added to config
+	patterns := f.RedactFieldPatterns()
+	if len(patterns) != 2 {
+		t.Errorf("expected 2 patterns, got %d", len(patterns))
+	}
+
+	entry := makeEntry("some log message")
+	entry.Data["MySecretValue"] = "sensitive1"
+	entry.Data["token_auth"] = "sensitive2"
+	entry.Data["normal_field"] = "safe"
+
+	out, err := f.Format(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := string(out)
+	if strings.Contains(outStr, "sensitive1") || strings.Contains(outStr, "sensitive2") {
+		t.Error("expected matched field values to be redacted")
+	}
+	if !strings.Contains(outStr, `"MySecretValue":"[REDACTED]"`) {
+		t.Error("expected MySecretValue to match case-insensitive 'secret'")
+	}
+	if !strings.Contains(outStr, `"token_auth":"[REDACTED]"`) {
+		t.Error("expected token_auth to match prefix 'token_'")
+	}
+	if !strings.Contains(outStr, `"normal_field":"safe"`) {
+		t.Error("expected normal_field to remain untouched")
+	}
+}
+
+// TestFieldRedaction_DoesNotMutateCallerEntry verifies that the original logrus.Entry's Data map
+// is not modified by the formatter.
+func TestFieldRedaction_DoesNotMutateCallerEntry(t *testing.T) {
+	f := NewRedactingFormatter(&logrus.JSONFormatter{}).
+		RedactFields("secret")
+
+	entry := makeEntry("test")
+	entry.Data["secret"] = "myval"
+	entry.Data["safe"] = "safeval"
+
+	_, err := f.Format(entry)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if entry.Data["secret"] != "myval" {
+		t.Errorf("original entry mutated: secret field changed to %q", entry.Data["secret"])
+	}
+}
+
+// TestConcurrency_Fields verifies concurrent safety of field configuration and formatting.
+func TestConcurrency_Fields(t *testing.T) {
+	f := NewRedactingFormatter(&logrus.JSONFormatter{})
+
+	var wg sync.WaitGroup
+
+	// Formatting concurrent logs
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(val int) {
+			defer wg.Done()
+			entry := makeEntry("test log")
+			entry.Data["password"] = fmt.Sprintf("sec%d", val)
+			entry.Data["custom_token"] = fmt.Sprintf("tok%d", val)
+			f.Format(entry)
+		}(i)
+	}
+
+	// Concurrently adding exact fields
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			f.RedactFields(fmt.Sprintf("field-%d", idx))
+		}(i)
+	}
+
+	// Concurrently adding key patterns
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			f.RedactFieldsByKeyPattern(regexp.MustCompile(fmt.Sprintf("pattern-%d", idx)))
+		}(i)
 	}
 
 	wg.Wait()
