@@ -7,8 +7,8 @@ import (
 
 // Package-level compiled regex patterns for performance.
 var (
-	passwordPattern = regexp.MustCompile(`(?i)(['"]?(?:password|passwd|pwd)['"]?(?:\s*[=:]\s*|\s+))("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|[^\s,;	()\[\]]+)`)
-	apiKeyPattern   = regexp.MustCompile(`(?i)(['"]?(?:api_key|apikey|api-key)['"]?(?:\s*[=:]\s*|\s+))("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|[^\s,;	()\[\]]+)`)
+	passwordPattern = regexp.MustCompile(`(?i)(['"]?(?:password|passwd|pwd)['"]?(?:\s*[=:]\s*|\s+))("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|[^\s,;()\[\]]+)`)
+	apiKeyPattern   = regexp.MustCompile(`(?i)(['"]?(?:api_key|apikey|api-key)['"]?(?:\s*[=:]\s*|\s+))("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|[^\s,;()\[\]]+)`)
 	emailPattern    = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`)
 )
 
